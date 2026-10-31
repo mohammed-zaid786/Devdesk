@@ -1,43 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { CheckSquare } from 'lucide-react';
+import API from '../api';
 
-// Tasks management component to track issues assigned to the user
+// Tasks management component connected with backend API and PostgreSQL database
 export default function Tasks() {
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Helper function to load tasks from localStorage based on current user email
-  const loadTasks = () => {
-    const currentUser = JSON.parse(localStorage.getItem('user')) || {};
-    const userEmail = currentUser.email || 'default_user';
-    const storageKey = `devdesk_issues_${userEmail}`;
+  // Fetch all issues from backend API on mount
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
-    const savedIssues = JSON.parse(localStorage.getItem(storageKey)) || [];
-    setTasks(savedIssues);
+  const fetchTasks = async () => {
+    try {
+      const response = await API.get('/issues');
+      const issuesData = Array.isArray(response.data) ? response.data : [];
+      
+      // Filter issues assigned to the current user (or show all if you want to test)
+      // Yahan hum sabhi issues dikha rahe hain ya aap assigned_to se filter bhi kar sakte hain
+      setTasks(issuesData);
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
+      setError('Failed to load tasks from server.');
+    } finally {
+      setLoading(false);
+    }
   };
-
-  // Load tasks on mount and setup storage event listener for live synchronization across tabs
-  useEffect(() => {
-    loadTasks();
-
-    // Listen to storage events so tasks refresh immediately when updated elsewhere
-    window.addEventListener('storage', loadTasks);
-    return () => {
-      window.removeEventListener('storage', loadTasks);
-    };
-  }, []);
-
-  // Fetch data on every component mount or focus to ensure state freshness
-  useEffect(() => {
-    loadTasks();
-  }, []);
 
   return (
     <div>
       {/* Page Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ color: '#0f172a', margin: 0, fontSize: '26px' }}>My Tasks</h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Issues assigned to you.</p>
+        <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Issues assigned to you from database.</p>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>
+          {error}
+        </div>
+      )}
 
       {/* Tasks Table Container */}
       <div style={{ background: '#ffffff', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -47,15 +52,20 @@ export default function Tasks() {
               <th style={{ padding: '16px 24px' }}>Title</th>
               <th style={{ padding: '16px 24px' }}>Project</th>
               <th style={{ padding: '16px 24px' }}>Status</th>
-              <th style={{ padding: '16px 24px' }}>Priority</th>
-              <th style={{ padding: '16px 24px' }}>Due Date</th>
+              <th style={{ padding: '16px 24px' }}>Assigned To</th>
             </tr>
           </thead>
           <tbody>
-            {tasks.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-                  No tasks assigned to you right now.
+                <td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                  Loading tasks...
+                </td>
+              </tr>
+            ) : tasks.length === 0 ? (
+              <tr>
+                <td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                  No tasks found in database.
                 </td>
               </tr>
             ) : (
@@ -64,18 +74,17 @@ export default function Tasks() {
                   <td style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <CheckSquare size={18} color="#2563eb" /> {task.title}
                   </td>
-                  <td style={{ padding: '16px 24px', color: '#475569' }}>{task.project}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569' }}>{task.project_id || 'General'}</td>
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ 
-                      background: task.status === 'Resolved' ? '#dcfce7' : '#fef3c7', 
-                      color: task.status === 'Resolved' ? '#166534' : '#92400e', 
+                      background: (task.status || '').toLowerCase() === 'resolved' ? '#dcfce7' : '#fef3c7', 
+                      color: (task.status || '').toLowerCase() === 'resolved' ? '#166534' : '#92400e', 
                       padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '500' 
                     }}>
-                      {task.status}
+                      {task.status || 'Open'}
                     </span>
                   </td>
-                  <td style={{ padding: '16px 24px', color: '#475569' }}>{task.priority}</td>
-                  <td style={{ padding: '16px 24px', color: '#64748b' }}>{task.dueDate}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569' }}>{task.assigned_to || 'Unassigned'}</td>
                 </tr>
               ))
             )}

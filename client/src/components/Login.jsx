@@ -87,6 +87,7 @@ export default function Login({ onLoginSuccess }) {
                 value={name} 
                 onChange={(e) => setName(e.target.value)} 
                 required 
+                autoComplete="off"
                 placeholder="Enter your name"
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
               />
@@ -100,6 +101,7 @@ export default function Login({ onLoginSuccess }) {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
+              autoComplete="off"
               placeholder="you@example.com"
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
             />
@@ -112,6 +114,7 @@ export default function Login({ onLoginSuccess }) {
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
+              autoComplete="new-password"
               placeholder="••••••••"
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
             />

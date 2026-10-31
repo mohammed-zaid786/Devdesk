@@ -1,5 +1,16 @@
 const pool = require('../config/db');
 
+// 0. Get all issues from the database (Added for /api/v1/issues)
+const getAllIssues = async (req, res) => {
+    try {
+        const issues = await pool.query('SELECT * FROM issues ORDER BY id DESC');
+        res.json(issues.rows);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Server error while fetching issues' });
+    }
+};
+
 // 1. Create a new issue for a project
 const createIssue = async (req, res) => {
     try {
@@ -90,6 +101,7 @@ const deleteIssue = async (req, res) => {
 };
 
 module.exports = { 
+    getAllIssues,
     createIssue, 
     getProjectIssues, 
     updateIssue, 

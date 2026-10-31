@@ -1,52 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { Folder, Plus, MoreVertical } from 'lucide-react';
+import API from '../api';
 
-// Projects management component for tracking organization projects and associated issues
+// Projects management component connected with backend API and PostgreSQL database
 export default function Projects() {
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [owner, setOwner] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Extract current logged-in user details to isolate storage per user
-  const currentUser = JSON.parse(localStorage.getItem('user')) || {};
-  const userEmail = currentUser.email || 'default_user';
-  const storageKey = `devdesk_projects_${userEmail}`;
-
-  // Load projects and count associated issues from localStorage on mount
+  // Fetch projects from backend API on mount
   useEffect(() => {
-    const savedProjects = JSON.parse(localStorage.getItem(storageKey)) || [];
-    const savedIssues = JSON.parse(localStorage.getItem(`devdesk_issues_${userEmail}`)) || [];
+    fetchProjects();
+  }, []);
 
-    const updatedProjects = savedProjects.map(proj => {
-      const count = savedIssues.filter(issue => 
-        issue.project.toLowerCase().trim() === proj.name.toLowerCase().trim()
-      ).length;
-      return { ...proj, totalIssues: count };
-    });
+  const fetchProjects = async () => {
+    try {
+      const response = await API.get('/projects');
+      // Safe check to ensure projects is always an array
+      const projectData = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data.projects || []);
+      setProjects(projectData);
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+      setError('Failed to load projects from server.');
+    }
+  };
 
-    setProjects(updatedProjects);
-  }, [storageKey, userEmail]);
-
-  // Handle creation of a new project
-  const handleCreateProject = (e) => {
+  // Handle creation of a new project via backend API
+  const handleCreateProject = async (e) => {
     e.preventDefault();
     if (!projectName.trim()) return;
 
-    const newProject = {
-      id: Date.now(),
-      name: projectName,
-      owner: owner || currentUser.name || 'Current User',
-      totalIssues: 0,
-      status: 'Active'
-    };
+    setLoading(true);
+    setError('');
 
-    const updated = [...projects, newProject];
-    setProjects(updated);
-    localStorage.setItem(storageKey, JSON.stringify(updated));
-    setProjectName('');
-    setOwner('');
-    setShowModal(false);
+    try {
+      const response = await API.post('/projects', { 
+        title: projectName, 
+        owner_name: owner || 'Current User' 
+      });
+
+      // Update state with the newly created project from database
+      const createdProj = response.data.project || response.data;
+      setProjects([...projects, createdProj]);
+      setProjectName('');
+      setOwner('');
+      setShowModal(false);
+      setLoading(false);
+      
+      // Refresh list from backend to ensure sync
+      fetchProjects();
+    } catch (err) {
+      console.error('Error creating project:', err);
+      setError(err.response?.data?.error || 'Failed to create project.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,7 +67,7 @@ export default function Projects() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ color: '#0f172a', margin: 0, fontSize: '26px' }}>Projects</h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Manage your projects.</p>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Manage your projects from database.</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
@@ -64,6 +76,13 @@ export default function Projects() {
           <Plus size={18} /> New Project
         </button>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>
+          {error}
+        </div>
+      )}
 
       {/* Projects Table Container */}
       <div style={{ background: '#ffffff', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -81,20 +100,20 @@ export default function Projects() {
             {projects.length === 0 ? (
               <tr>
                 <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-                  No projects found. Create your first project!
+                  No projects found in database. Create your first project!
                 </td>
               </tr>
             ) : (
               projects.map((proj) => (
                 <tr key={proj.id} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '14px', color: '#0f172a' }}>
                   <td style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Folder size={18} color="#2563eb" /> {proj.name}
+                    <Folder size={18} color="#2563eb" /> {proj.title || proj.name}
                   </td>
-                  <td style={{ padding: '16px 24px', color: '#475569' }}>{proj.owner}</td>
-                  <td style={{ padding: '16px 24px', color: '#475569', fontWeight: '600' }}>{proj.totalIssues}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569' }}>{proj.owner_name || proj.owner || 'Admin'}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569', fontWeight: '600' }}>{proj.total_issues || proj.totalIssues || 0}</td>
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '500' }}>
-                      {proj.status}
+                      {proj.status || 'Active'}
                     </span>
                   </td>
                   <td style={{ padding: '16px 24px', color: '#64748b' }}>
@@ -144,9 +163,10 @@ export default function Projects() {
                 </button>
                 <button 
                   type="submit" 
+                  disabled={loading}
                   style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
                 >
-                  Create
+                  {loading ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </form>

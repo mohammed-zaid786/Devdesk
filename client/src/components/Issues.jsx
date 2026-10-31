@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Plus, CheckCircle } from 'lucide-react';
+import API from '../api';
 
-// Issues management component for tracking tasks and bugs
+// Issues management component connected with backend API and PostgreSQL database
 export default function Issues() {
   const [issues, setIssues] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -9,58 +10,76 @@ export default function Issues() {
   const [project, setProject] = useState('');
   const [priority, setPriority] = useState('Medium');
   const [dueDate, setDueDate] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Retrieve current user data from localStorage to isolate storage per user
-  const currentUser = JSON.parse(localStorage.getItem('user')) || {};
-  const userEmail = currentUser.email || 'default_user';
-  const storageKey = `devdesk_issues_${userEmail}`;
-
-  // Load saved issues from localStorage on component mount
+  // Fetch issues from backend API on component mount
   useEffect(() => {
-    const savedIssues = JSON.parse(localStorage.getItem(storageKey)) || [];
-    setIssues(savedIssues);
-  }, [storageKey]);
+    fetchIssues();
+  }, []);
 
-  // Helper function to update state and persist issues to localStorage
-  const saveAndSyncIssues = (newIssues) => {
-    setIssues(newIssues);
-    localStorage.setItem(storageKey, JSON.stringify(newIssues));
+  const fetchIssues = async () => {
+    try {
+      const response = await API.get('/issues');
+      setIssues(response.data);
+    } catch (err) {
+      console.error('Error fetching issues:', err);
+      setError('Failed to load issues from server.');
+    }
   };
 
-  // Handle creation of a new issue
-  const handleCreateIssue = (e) => {
+  // Handle creation of a new issue via backend API
+  const handleCreateIssue = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const newIssue = {
-      id: Date.now(),
-      title,
-      project: project || 'General',
-      status: 'Open',
-      priority,
-      assignee: currentUser.name || 'Current User',
-      dueDate: dueDate || new Date().toLocaleDateString()
-    };
+    setLoading(true);
+    setError('');
 
-    const updated = [...issues, newIssue];
-    saveAndSyncIssues(updated);
-    setTitle('');
-    setProject('');
-    setPriority('Medium');
-    setDueDate('');
-    setShowModal(false);
+    try {
+      const response = await API.post('/issues', {
+        title,
+        project_name: project || 'General',
+        priority,
+        due_date: dueDate || new Date().toISOString().split('T')[0],
+        status: 'Open'
+      });
+
+      setIssues([...issues, response.data.issue || response.data]);
+      setTitle('');
+      setProject('');
+      setPriority('Medium');
+      setDueDate('');
+      setShowModal(false);
+      setLoading(false);
+      
+      // Refresh list from backend
+      fetchIssues();
+    } catch (err) {
+      console.error('Error creating issue:', err);
+      setError(err.response?.data?.error || 'Failed to create issue.');
+      setLoading(false);
+    }
   };
 
-  // Toggle issue status between 'Open' and 'Resolved'
-  const toggleStatus = (id) => {
-    const updated = issues.map(issue => {
-      if (issue.id === id) {
-        const nextStatus = issue.status === 'Open' ? 'Resolved' : 'Open';
-        return { ...issue, status: nextStatus };
-      }
-      return issue;
-    });
-    saveAndSyncIssues(updated);
+  // Toggle issue status between 'Open' and 'Resolved' via backend API
+  const toggleStatus = async (id, currentStatus) => {
+    try {
+      const nextStatus = currentStatus === 'Open' ? 'Resolved' : 'Open';
+      
+      await API.patch(`/issues/${id}`, { status: nextStatus });
+
+      // Update state locally
+      setIssues(issues.map(issue => {
+        if (issue.id === id) {
+          return { ...issue, status: nextStatus };
+        }
+        return issue;
+      }));
+    } catch (err) {
+      console.error('Error updating issue status:', err);
+      setError('Failed to update issue status.');
+    }
   };
 
   return (
@@ -69,7 +88,7 @@ export default function Issues() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h1 style={{ color: '#0f172a', margin: 0, fontSize: '26px' }}>Issues</h1>
-          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Track and manage all project issues.</p>
+          <p style={{ color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' }}>Track and manage all database project issues.</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
@@ -78,6 +97,13 @@ export default function Issues() {
           <Plus size={18} /> New Issue
         </button>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>
+          {error}
+        </div>
+      )}
 
       {/* Issues Table Container */}
       <div style={{ background: '#ffffff', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
@@ -96,7 +122,7 @@ export default function Issues() {
             {issues.length === 0 ? (
               <tr>
                 <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-                  No issues found. Create a new issue to track bugs or tasks!
+                  No issues found in database. Create a new issue to track bugs or tasks!
                 </td>
               </tr>
             ) : (
@@ -105,7 +131,7 @@ export default function Issues() {
                   <td style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <AlertCircle size={18} color={issue.status === 'Resolved' ? '#16a34a' : '#e11d48'} /> {issue.title}
                   </td>
-                  <td style={{ padding: '16px 24px', color: '#475569' }}>{issue.project}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569' }}>{issue.project_name || issue.project || 'General'}</td>
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ 
                       background: issue.status === 'Resolved' ? '#dcfce7' : '#eff6ff', 
@@ -116,10 +142,10 @@ export default function Issues() {
                     </span>
                   </td>
                   <td style={{ padding: '16px 24px', color: '#475569' }}>{issue.priority}</td>
-                  <td style={{ padding: '16px 24px', color: '#475569' }}>{issue.dueDate}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569' }}>{issue.due_date || issue.dueDate}</td>
                   <td style={{ padding: '16px 24px' }}>
                     <button 
-                      onClick={() => toggleStatus(issue.id)}
+                      onClick={() => toggleStatus(issue.id, issue.status)}
                       style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#334155', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
                       <CheckCircle size={14} color={issue.status === 'Resolved' ? '#16a34a' : '#64748b'} />
@@ -191,9 +217,10 @@ export default function Issues() {
                 </button>
                 <button 
                   type="submit" 
+                  disabled={loading}
                   style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}
                 >
-                  Create
+                  {loading ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </form>

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Creating a centralized Axios instance for backend API communication
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api/v1',
+baseURL: 'http://localhost:5000/api/v1',
 });
 
 // Request interceptor to automatically attach JWT token to protected routes

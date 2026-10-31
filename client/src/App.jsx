@@ -16,7 +16,8 @@ export default function App() {
 
   const fetchIssues = async () => {
     try {
-      const response = await API.get('/issues/1');
+      // Updated to fetch all issues from the backend database API
+      const response = await API.get('/issues');
       const data = response.data;
       if (Array.isArray(data)) {
         setIssues(data);
