@@ -7,6 +7,8 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [assigneeInput, setAssigneeInput] = useState('');
 
   // Fetch all issues from backend API on mount
   useEffect(() => {
@@ -17,15 +19,32 @@ export default function Tasks() {
     try {
       const response = await API.get('/issues');
       const issuesData = Array.isArray(response.data) ? response.data : [];
-      
-      // Filter issues assigned to the current user (or show all if you want to test)
-      // Yahan hum sabhi issues dikha rahe hain ya aap assigned_to se filter bhi kar sakte hain
       setTasks(issuesData);
     } catch (err) {
       console.error('Error fetching tasks:', err);
       setError('Failed to load tasks from server.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle saving the assignee name
+  const handleSaveAssignee = async (id) => {
+    try {
+      await API.patch(`/issues/${id}`, { assigned_to: assigneeInput.trim() });
+      
+      // Update state locally
+      setTasks(tasks.map(task => {
+        if (task.id === id) {
+          return { ...task, assigned_to: assigneeInput.trim() };
+        }
+        return task;
+      }));
+      setEditingTaskId(null);
+      setAssigneeInput('');
+    } catch (err) {
+      console.error('Error updating assignee:', err);
+      setError('Failed to update assignee.');
     }
   };
 
@@ -74,7 +93,9 @@ export default function Tasks() {
                   <td style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <CheckSquare size={18} color="#2563eb" /> {task.title}
                   </td>
-                  <td style={{ padding: '16px 24px', color: '#475569' }}>{task.project_id || 'General'}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569' }}>
+                    {task.project_title || task.project_name || task.project || 'General'}
+                  </td>
                   <td style={{ padding: '16px 24px' }}>
                     <span style={{ 
                       background: (task.status || '').toLowerCase() === 'resolved' ? '#dcfce7' : '#fef3c7', 
@@ -84,7 +105,44 @@ export default function Tasks() {
                       {task.status || 'Open'}
                     </span>
                   </td>
-                  <td style={{ padding: '16px 24px', color: '#475569' }}>{task.assigned_to || 'Unassigned'}</td>
+                  <td style={{ padding: '16px 24px', color: '#475569' }}>
+                    {editingTaskId === task.id ? (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <input 
+                          type="text" 
+                          value={assigneeInput} 
+                          onChange={(e) => setAssigneeInput(e.target.value)} 
+                          placeholder="Enter name"
+                          style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '13px', width: '110px' }}
+                        />
+                        <button 
+                          onClick={() => handleSaveAssignee(task.id)}
+                          style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                        >
+                          Save
+                        </button>
+                        <button 
+                          onClick={() => setEditingTaskId(null)}
+                          style={{ background: '#64748b', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                        >
+                          X
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{task.assigned_to || 'Unassigned'}</span>
+                        <button 
+                          onClick={() => {
+                            setEditingTaskId(task.id);
+                            setAssigneeInput(task.assigned_to || '');
+                          }}
+                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#334155' }}
+                        >
+                          {task.assigned_to ? 'Edit' : 'Assign'}
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
