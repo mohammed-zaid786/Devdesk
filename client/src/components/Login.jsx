@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, User, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Check } from 'lucide-react';
 import API from '../api';
 
 // Authentication component for handling user login and registration in DevDesk
@@ -108,7 +108,7 @@ export default function Login({ onLoginSuccess }) {
           </div>
 
           <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-            © 2026 DevDesk Inc. All rights reserved.
+            ©️ 2026 DevDesk Inc. All rights reserved.
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export default function Login({ onLoginSuccess }) {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {isSignup && (
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Full Name</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px', textAlign: 'left' }}>Full Name</label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <User size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px' }} />
                   <input 
@@ -159,14 +159,14 @@ export default function Login({ onLoginSuccess }) {
                     required 
                     autoComplete="off"
                     placeholder="Enter your name"
-                    style={{ width: '100%', padding: '10px 12px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a' }}
+                    style={{ width: '100%', padding: '10px 12px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a', background: '#ffffff', textAlign: 'left' }}
                   />
                 </div>
               </div>
             )}
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Email Address</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px', textAlign: 'left' }}>Email Address</label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <Mail size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px' }} />
                 <input 
@@ -176,13 +176,13 @@ export default function Login({ onLoginSuccess }) {
                   required 
                   autoComplete="off"
                   placeholder="you@example.com"
-                  style={{ width: '100%', padding: '10px 12px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a' }}
+                  style={{ width: '100%', padding: '10px 12px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a', background: '#ffffff', textAlign: 'left' }}
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>Password</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px', textAlign: 'left' }}>Password</label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <Lock size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px' }} />
                 <input 
@@ -192,7 +192,7 @@ export default function Login({ onLoginSuccess }) {
                   required 
                   autoComplete="new-password"
                   placeholder="••••••••"
-                  style={{ width: '100%', padding: '10px 38px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a' }}
+                  style={{ width: '100%', padding: '10px 38px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a', background: '#ffffff', textAlign: 'left' }}
                 />
                 <button 
                   type="button" 
@@ -206,13 +206,24 @@ export default function Login({ onLoginSuccess }) {
 
             {!isSignup && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', cursor: 'pointer' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={rememberMe} 
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ accentColor: '#2563eb' }}
-                  />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', cursor: 'pointer', userSelect: 'none' }}>
+                  <div 
+                    onClick={() => setRememberMe(!rememberMe)}
+                    style={{ 
+                      width: '16px', 
+                      height: '16px', 
+                      borderRadius: '50%', 
+                      border: '2px solid #2563eb', 
+                      backgroundColor: '#ffffff', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {rememberMe && <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }} />}
+                  </div>
                   Remember me
                 </label>
                 <span style={{ color: '#2563eb', fontWeight: '500', cursor: 'pointer' }}>Forgot password?</span>

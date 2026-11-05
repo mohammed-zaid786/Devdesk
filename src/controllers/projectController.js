@@ -1,15 +1,32 @@
 const pool = require('../config/db');
 
-// Get all projects with actual issue count from database
+// Get all projects (Admins see all projects, Members see only assigned projects)
 const getProjects = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT p.*, COUNT(i.id) AS total_issues 
-      FROM projects p 
-      LEFT JOIN issues i ON p.id = i.project_id 
-      GROUP BY p.id 
-      ORDER BY p.id ASC
-    `);
+    const { id: userId, role } = req.user; // req.user token verify middleware se aayega
+
+    let result;
+    if (role === 'Admin' || role === 'Administrator') {
+      // Admin can view all projects with total issues count
+      result = await pool.query(`
+        SELECT p.*, COUNT(i.id) AS total_issues 
+        FROM projects p 
+        LEFT JOIN issues i ON p.id = i.project_id 
+        GROUP BY p.id 
+        ORDER BY p.id ASC
+      `);
+    } else {
+      // Normal Member can view only projects assigned to them (or where they are members)
+      result = await pool.query(`
+        SELECT DISTINCT p.*, COUNT(i.id) AS total_issues 
+        FROM projects p 
+        LEFT JOIN issues i ON p.id = i.project_id 
+        WHERE p.owner_id = $1 
+        GROUP BY p.id 
+        ORDER BY p.id ASC
+      `, [userId]);
+    }
+
     res.json({ projects: result.rows });
   } catch (err) {
     console.error('Error fetching projects:', err);
@@ -17,13 +34,15 @@ const getProjects = async (req, res) => {
   }
 };
 
-// Create a new project with status support
+// Create a new project (Admin Only - creates project and assigns owner)
 const createProject = async (req, res) => {
   try {
-    const { title, owner_name, status } = req.body;
+    const { title, status } = req.body;
+    const userId = req.user.id; // Logged-in admin ka ID jo project create kar raha hai
+
     const result = await pool.query(
       'INSERT INTO projects (title, owner_id, status) VALUES ($1, $2, $3) RETURNING *',
-      [title, 1, status || 'Active']
+      [title, userId, status || 'Active']
     );
     res.status(201).json({ project: result.rows[0] });
   } catch (err) {

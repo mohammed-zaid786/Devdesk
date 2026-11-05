@@ -1,7 +1,45 @@
+// const express = require('express');
+// const cors = require('cors');
+// const helmet = require('helmet');
+// require('dotenv').config();
+// const pool = require('./config/db');                  // Import database connection
+// const authRoutes = require('./routes/authRoutes');      // Import authentication routes
+// const projectRoutes = require('./routes/projectRoutes'); // Import project routes
+// const issueRoutes = require('./routes/issueRoutes');    // Import issue routes
+
+// const app = express();
+// const PORT = process.env.PORT || 5000;
+
+// // Middleware
+// app.use(helmet());                                      // Security headers
+// app.use(cors());                                        // Enable CORS for frontend communication
+// app.use(express.json());                                // Parse incoming JSON data
+
+// // Mount Auth Routes
+// app.use('/api/v1/auth', authRoutes);
+
+// // Mount Project Routes
+// app.use('/api/v1/projects', projectRoutes);
+
+// // Mount Issue Routes
+// app.use('/api/v1/issues', issueRoutes);
+
+// // Test Route
+// app.get('/', (req, res) => {
+//     res.json({ message: 'DevDesk Issue Tracker API is running live!' });
+// });
+
+// app.listen(PORT, () => {
+//     console.log(`Server is running on port ${PORT}`);
+// });
+
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 const pool = require('./config/db');                  // Import database connection
 const authRoutes = require('./routes/authRoutes');      // Import authentication routes
 const projectRoutes = require('./routes/projectRoutes'); // Import project routes
@@ -14,6 +52,37 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());                                      // Security headers
 app.use(cors());                                        // Enable CORS for frontend communication
 app.use(express.json());                                // Parse incoming JSON data
+
+// Swagger Options Setup with Bearer Authentication
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'DevDesk API Documentation',
+            version: '1.0.0',
+            description: 'API documentation for DevDesk Issue Tracker with PostgreSQL database',
+        },
+        servers: [
+            {
+                url: `http://localhost:${PORT}`,
+            },
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                },
+            },
+        },
+        security: [{ bearerAuth: [] }],
+    },
+    apis: ['./src/routes/*.js'], // Routes se automatic documentation fetch karega
+};
+
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Mount Auth Routes
 app.use('/api/v1/auth', authRoutes);
@@ -31,4 +100,5 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`Swagger Docs available at http://localhost:${PORT}/api-docs`);
 });
