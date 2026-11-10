@@ -1,22 +1,3 @@
-// const express = require('express');
-// const router = express.Router();
-// const { registerUser, loginUser } = require('../controllers/authController');
-
-// // POST /api/v1/auth/register - Route for user registration
-// router.post('/register', registerUser);
-
-// // POST /api/v1/auth/login - Route for user login
-// router.post('/login', loginUser);
-
-// module.exports = router;
-
-
-
-
-
-
-
-
 const express = require('express');
 const router = express.Router();
 const { registerUser, loginUser } = require('../controllers/authController');
@@ -51,6 +32,10 @@ const { registerUser, loginUser } = require('../controllers/authController');
  *                 type: string
  *               password:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [member, admin]
+ *                 description: User role (defaults to member if not provided)
  *     responses:
  *       201:
  *         description: User registered successfully

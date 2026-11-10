@@ -6,7 +6,7 @@ const getProjects = async (req, res) => {
     const { id: userId, role } = req.user; // req.user token verify middleware se aayega
 
     let result;
-    if (role === 'Admin' || role === 'Administrator') {
+    if (role === 'Admin' || role === 'Administrator' || role === 'admin') {
       // Admin can view all projects with total issues count
       result = await pool.query(`
         SELECT p.*, COUNT(i.id) AS total_issues 
@@ -34,15 +34,23 @@ const getProjects = async (req, res) => {
   }
 };
 
-// Create a new project (Admin Only - creates project and assigns owner)
+// Create a new project (Admin Only - creates project with detailed fields and assigns owner)
 const createProject = async (req, res) => {
   try {
-    const { title, status } = req.body;
+    const { title, description, priority, deadline, status } = req.body;
     const userId = req.user.id; // Logged-in admin ka ID jo project create kar raha hai
 
     const result = await pool.query(
-      'INSERT INTO projects (title, owner_id, status) VALUES ($1, $2, $3) RETURNING *',
-      [title, userId, status || 'Active']
+      `INSERT INTO projects (title, description, priority, deadline, status, owner_id) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [
+        title, 
+        description || null, 
+        priority || 'Medium', 
+        deadline || null, 
+        status || 'Active', 
+        userId
+      ]
     );
     res.status(201).json({ project: result.rows[0] });
   } catch (err) {
@@ -51,15 +59,21 @@ const createProject = async (req, res) => {
   }
 };
 
-// Update an existing project (Edit & Status Toggle)
+// Update an existing project (Edit & Status Toggle with all fields)
 const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, status } = req.body;
+    const { title, description, priority, deadline, status } = req.body;
     
     const result = await pool.query(
-      'UPDATE projects SET title = COALESCE($1, title), status = COALESCE($2, status) WHERE id = $3 RETURNING *',
-      [title, status, id]
+      `UPDATE projects 
+       SET title = COALESCE($1, title), 
+           description = COALESCE($2, description), 
+           priority = COALESCE($3, priority), 
+           deadline = COALESCE($4, deadline), 
+           status = COALESCE($5, status) 
+       WHERE id = $6 RETURNING *`,
+      [title, description, priority, deadline, status, id]
     );
 
     if (result.rows.length === 0) {

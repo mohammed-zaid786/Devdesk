@@ -1,16 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../api';
 import { X } from 'lucide-react';
 
-// Create Issue Modal component matching the DevDesk design layout
+// Create Issue Modal component matching the DevDesk design layout with dynamic Projects and Assignee
 export default function CreateIssueModal({ isOpen, onClose, onIssueCreated }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [project, setProject] = useState('DevDesk');
+  const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
+  
+  const [projectId, setProjectId] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
   const [priority, setPriority] = useState('Medium');
   const [status, setStatus] = useState('Open');
+  const [dueDate, setDueDate] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Fetch projects and users when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchProjects();
+      fetchUsers();
+    }
+  }, [isOpen]);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await API.get('/projects');
+      const projectData = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data.projects || []);
+      setProjects(projectData);
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await API.get('/users');
+      const userData = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data.users || []);
+      setUsers(userData);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
+  };
 
   // Return nothing if the modal is not open
   if (!isOpen) return null;
@@ -21,8 +59,17 @@ export default function CreateIssueModal({ isOpen, onClose, onIssueCreated }) {
     setError('');
 
     try {
-      // Post new issue data to the backend API
-      await API.post('/issues', { title, description, project, priority, status });
+      // Post new issue data to the backend API matching your controller
+      await API.post('/issues', { 
+        title, 
+        description, 
+        project_id: projectId || null, 
+        assigned_to: assignedTo || null,
+        priority, 
+        status,
+        due_date: dueDate || null
+      });
+
       setLoading(false);
       onIssueCreated(); // Callback to refresh the issue list
       onClose(); // Close the modal upon success
@@ -38,7 +85,7 @@ export default function CreateIssueModal({ isOpen, onClose, onIssueCreated }) {
         
         {/* Modal Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '20px', color: '#0f172a' }}>Create Issue</h2>
+          <h2 style={{ margin: 0, fontSize: '20px', color: '#0f172a' }}>Create New Issue</h2>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}>
             <X size={20} />
           </button>
@@ -47,7 +94,7 @@ export default function CreateIssueModal({ isOpen, onClose, onIssueCreated }) {
         {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
 
         {/* Issue Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Issue Title *</label>
             <input 
@@ -56,7 +103,7 @@ export default function CreateIssueModal({ isOpen, onClose, onIssueCreated }) {
               onChange={(e) => setTitle(e.target.value)} 
               required 
               placeholder="e.g. Login page not working"
-              style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '10px', background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
 
@@ -65,38 +112,64 @@ export default function CreateIssueModal({ isOpen, onClose, onIssueCreated }) {
             <textarea 
               value={description} 
               onChange={(e) => setDescription(e.target.value)} 
-              placeholder="Describe the issue..."
+              placeholder="Describe the issue in detail..."
               rows="3"
-              style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+              style={{ width: '100%', padding: '10px', background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Project *</label>
-              <select value={project} onChange={(e) => setProject(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', outline: 'none', boxSizing: 'border-box' }}>
-                <option value="DevDesk">DevDesk</option>
-                <option value="Website">Website</option>
-                <option value="Mobile App">Mobile App</option>
+              <select 
+                value={projectId} 
+                onChange={(e) => setProjectId(e.target.value)} 
+                style={{ width: '100%', padding: '10px', background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+              >
+                <option value="">-- Choose Project --</option>
+                {projects.map((proj) => (
+                  <option key={proj.id} value={proj.id}>{proj.title || proj.name}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Priority *</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', outline: 'none', boxSizing: 'border-box' }}>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Assignee (Member)</label>
+              <select 
+                value={assignedTo} 
+                onChange={(e) => setAssignedTo(e.target.value)} 
+                style={{ width: '100%', padding: '10px', background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+              >
+                <option value="">-- Unassigned --</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.name || user.email}>{user.name} ({user.email})</option>
+                ))}
               </select>
             </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Status *</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', outline: 'none', boxSizing: 'border-box' }}>
-              <option value="Open">Open</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
-            </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Priority *</label>
+              <select 
+                value={priority} 
+                onChange={(e) => setPriority(e.target.value)} 
+                style={{ width: '100%', padding: '10px', background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Due Date</label>
+              <input 
+                type="date" 
+                value={dueDate} 
+                onChange={(e) => setDueDate(e.target.value)}
+                style={{ width: '100%', padding: '10px', background: '#ffffff', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>

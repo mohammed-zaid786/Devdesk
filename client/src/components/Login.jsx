@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Check } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Shield } from 'lucide-react';
 import API from '../api';
 
 // Authentication component for handling user login and registration in DevDesk
@@ -8,6 +8,7 @@ export default function Login({ onLoginSuccess }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('member'); // Default role member
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
@@ -23,8 +24,8 @@ export default function Login({ onLoginSuccess }) {
 
     try {
       if (isSignup) {
-        // Send registration request to the backend auth endpoint
-        await API.post('/auth/register', { name, email, password });
+        // Send registration request with role to the backend auth endpoint
+        await API.post('/auth/register', { name, email, password, role });
         setSuccessMsg('Registration successful! Please sign in now.');
         setIsSignup(false);
         setLoading(false);
@@ -37,20 +38,40 @@ export default function Login({ onLoginSuccess }) {
           localStorage.setItem('token', response.data.token);
         }
 
-        // Cache user details to display proper information across profile pages
+        // Extract user details securely from backend response
+        const userData = response.data.user || {};
+        const userName = userData.name || email.split('@')[0];
+        const userEmail = userData.email || email;
+        const userRole = userData.role || 'member';
+        const userId = userData.id || '';
+
         const loggedInUser = {
-          name: response.data.name || name || email.split('@')[0],
-          email: email,
-          role: response.data.role || (email.includes('admin') ? 'Administrator' : 'Member')
+          id: userId,
+          name: userName,
+          email: userEmail,
+          role: userRole,
+          avatar: userData.avatar || ''
         };
+
+        // Save active user session
         localStorage.setItem('user', JSON.stringify(loggedInUser));
+
+        // Initialize user-specific profile keys if not already present
+        const userEmailKey = `_` + userEmail.replace(/[^a-zA-Z0-9]/g, '_');
+        if (!localStorage.getItem(`custom_profile_name${userEmailKey}`)) {
+          localStorage.setItem(`custom_profile_name${userEmailKey}`, userName);
+          localStorage.setItem(`custom_profile_role${userEmailKey}`, userRole);
+          if (userData.avatar) {
+            localStorage.setItem(`custom_profile_avatar${userEmailKey}`, userData.avatar);
+          }
+        }
 
         setLoading(false);
         onLoginSuccess();
       }
     } catch (err) {
       setLoading(false);
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Something went wrong. Please try again.');
     }
   };
 
@@ -131,21 +152,18 @@ export default function Login({ onLoginSuccess }) {
             </p>
           </div>
 
-          {/* Error notification banner */}
           {error && (
             <div style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px', textAlign: 'center', border: '1px solid #fecaca' }}>
               {error}
             </div>
           )}
 
-          {/* Success notification banner */}
           {successMsg && (
             <div style={{ background: '#dcfce7', color: '#166534', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px', textAlign: 'center', border: '1px solid #bbf7d0' }}>
               {successMsg}
             </div>
           )}
 
-          {/* Authentication form container */}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {isSignup && (
               <div>
@@ -204,6 +222,23 @@ export default function Login({ onLoginSuccess }) {
               </div>
             </div>
 
+            {isSignup && (
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px', textAlign: 'left' }}>Select Role</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Shield size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px' }} />
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a', background: '#ffffff', textAlign: 'left' }}
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {!isSignup && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', cursor: 'pointer', userSelect: 'none' }}>
@@ -233,13 +268,12 @@ export default function Login({ onLoginSuccess }) {
             <button 
               type="submit" 
               disabled={loading}
-              style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginTop: '6px', transition: 'background 0.2s' }}
+              style={{ background: '#2d3546', color: '#fff', border: 'none', padding: '11px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginTop: '6px', transition: 'background 0.2s' }}
             >
               {loading ? 'Please wait...' : (isSignup ? 'Sign Up' : 'Sign In')}
             </button>
           </form>
 
-          {/* Toggle between Sign In and Sign Up views */}
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
             <button 
               type="button" 

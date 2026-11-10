@@ -1,8 +1,23 @@
-import React from 'react';
-import { LayoutDashboard, FolderKanban, CheckSquare, ListTodo, User, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, FolderKanban, CheckSquare, ListTodo, User, LogOut, ShieldCheck } from 'lucide-react';
 
 // Sidebar component for navigation matching DevDesk dashboard layout
 export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // Check if logged-in user is an admin from localStorage
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const userRole = (storedUser.role || '').toLowerCase();
+      if (userRole === 'admin' || userRole === 'administrator') {
+        setIsAdmin(true);
+      }
+    } catch (err) {
+      console.error('Error reading user role from localStorage', err);
+    }
+  }, []);
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: FolderKanban },
@@ -15,8 +30,15 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
     <div style={{ width: '260px', background: '#0f172a', color: '#fff', display: 'flex', flexDirection: 'column', height: '100vh', position: 'fixed', left: 0, top: 0, fontFamily: 'Segoe UI, sans-serif' }}>
       {/* App Branding Header */}
       <div style={{ padding: '24px 20px', borderBottom: '1px solid #1e293b' }}>
-        <h2 style={{ margin: 0, fontSize: '20px', color: '#60a5fa' }}>DevDesk 🚀</h2>
-        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>Issue Tracker</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: '20px', color: '#60a5fa' }}>DevDesk 🚀</h2>
+          {isAdmin && (
+            <span style={{ background: '#1e3a8a', color: '#93c5fd', fontSize: '10px', fontWeight: '700', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+              <ShieldCheck size={12} /> ADMIN
+            </span>
+          )}
+        </div>
+        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>Issue Tracker System</p>
       </div>
 
       {/* Navigation Links */}
@@ -76,3 +98,4 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout }) {
     </div>
   );
 }
+

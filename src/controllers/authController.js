@@ -58,10 +58,16 @@ const loginUser = async (req, res) => {
             { expiresIn: '1d' }
         );
 
-        // Send the generated token back to the client
+        // Send the generated token AND user data back to the client
         res.json({
             message: 'Logged in successfully',
-            token
+            token,
+            user: {
+                id: user.rows[0].id,
+                name: user.rows[0].name,
+                email: user.rows[0].email,
+                role: user.rows[0].role
+            }
         });
     } catch (err) {
         console.error(err.message);
